@@ -5,6 +5,19 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+import time
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, InvalidElementStateException
+
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.keys import Keys
+
 # --- 1. 配置信息 (根据你的侦察结果修改) ---
 # 警告: 仅用于练习，不要在公共代码库中存储真实密码
 CONFIG = {
@@ -15,118 +28,35 @@ CONFIG = {
     "target_course_code": "CS101", # 目标课程的代码
     "retry_interval_seconds": 5 # 每次尝试之间等待的秒数
 }
-# 导入库 (确保这些都在文件顶部)
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-# 导入库 (确保这些都在文件顶部)
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-
-
-# 导入库 (确保这些都在文件顶部)
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import InvalidElementStateException # 导入特定的异常类型
-
-
-
-
-# 确保文件顶部有这些导入
-import time
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import InvalidElementStateException, TimeoutException
-
-
-# 确保文件顶部有这些导入
-import time
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
-
-
-
-import time
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, InvalidElementStateException
 
 def login(driver, username, password, login_url):
-    print("正在打开登录页面...")
     driver.get(login_url)
     wait = WebDriverWait(driver, 15)
 
-    try:
-        # 1. 切换到账号密码登录
-        print("等待并点击“账号登录”标签……")
-        tab = wait.until(EC.element_to_be_clickable((By.ID, "userNameLogin_a")))
-        tab.click()
+    # 1. 账号登录标签
+    wait.until(EC.element_to_be_clickable((By.ID, "userNameLogin_a"))).click()
 
-        # 2. 输入用户名
-        print("等待用户名输入框可交互……")
-        user_field = wait.until(EC.element_to_be_clickable((By.ID, "username")))
-        user_field.click()  # 触发 onfocus，去掉 readonly
-        # 如果页面用 JS 给它加了 readonly，也可以强制去除：
-        driver.execute_script("arguments[0].removeAttribute('readonly')", user_field)
-        user_field.clear()
-        user_field.send_keys(username)
-        print("✅ 用户名输入完毕。")
+    # 2. 填用户名
+    user = wait.until(EC.element_to_be_clickable((By.ID, "username")))
+    driver.execute_script("arguments[0].removeAttribute('readonly')", user)
+    user.clear()
+    user.send_keys(username)
 
-        # 3. 输入密码
-        print("等待密码输入框可交互……")
-        pwd_field = wait.until(EC.element_to_be_clickable((By.ID, "password")))
-        pwd_field.click()
-        driver.execute_script("arguments[0].removeAttribute('readonly')", pwd_field)
-        pwd_field.clear()
-        pwd_field.send_keys(password)
-        print("✅ 密码输入完毕。")
+    # 3. 填密码
+    pwd = wait.until(EC.element_to_be_clickable((By.ID, "password")))
+    driver.execute_script("arguments[0].removeAttribute('readonly')", pwd)
+    pwd.clear()
+    pwd.send_keys(password)
 
-        # 4. 等待盐值字段被 JS 填好
-        print("等待 JS 填入 saltPassword……")
-        wait.until(lambda d: d.find_element(By.ID, "saltPassword").get_attribute("value"))
-        print("✅ saltPassword 已填值。")
+    # 4. 点登录（用 JS，规避遮挡/动画）
+    btn = wait.until(EC.element_to_be_clickable((By.ID, "login_submit")))
+    driver.execute_script("arguments[0].scrollIntoView(true);", btn)
+    driver.execute_script("arguments[0].click()", btn)
 
-        # 5. 点击登录
-        print("定位并点击登录按钮……")
-        btn = wait.until(EC.element_to_be_clickable((By.ID, "login_submit")))
-        btn.click()
-
-        # 6. 等待跳转
-        print("等待页面跳转……")
-        wait.until(lambda d: d.current_url != login_url)
-
-        # 7. 最后验证
-        wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), '学生选课')]")))
-        print("🎉 登录成功！")
-        return True
-
-    except InvalidElementStateException as e:
-        print("❌ 元素状态异常：可能是只读或未启用。", e)
-        driver.save_screenshot("login_invalid_state.png")
-        print("已截图 login_invalid_state.png。")
-        return False
-
-    except TimeoutException:
-        print("❌ 登录失败：等待超时，可能是定位器失效或网络问题。")
-        driver.save_screenshot("login_timeout_error.png")
-        print("已截图 login_timeout_error.png。")
-        return False
-
-    except Exception as e:
-        print("❌ 登录失败，未知错误：", type(e).__name__, e)
-        driver.save_screenshot("login_generic_error.png")
-        print("已截图 login_generic_error.png。")
-        return False
-
+    # 5. 等待跳转成功
+    wait.until(EC.url_changes(login_url))
+    print("🎉 登录成功！")
+    return True
 
 
 def navigate_to_selection_page(driver):
